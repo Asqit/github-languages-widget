@@ -37,8 +37,9 @@ func FetchGithubRepositories(username string) ([]models.Repository, error) {
 	repositories := []models.Repository{}
 	jsonError := json.Unmarshal(body, &repositories)
 
+	log.Println(string(body))
+
 	if jsonError != nil {
-		log.Println(body)
 		return nil, jsonError
 	}
 
