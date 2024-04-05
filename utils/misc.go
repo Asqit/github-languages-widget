@@ -6,16 +6,26 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/asqit/github-language-widget/models"
+	"github.com/joho/godotenv"
 )
+
+func GetEnv(key string) string {
+	godotenv.Load(".env")
+	value := os.Getenv(key)
+
+	return value
+}
 
 func FetchGithubRepositories(username string) ([]models.Repository, error) {
 	fetchUrl := fmt.Sprintf("https://api.github.com/users/%s/repos", username)
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	req, err := http.NewRequest("GET", fetchUrl, nil)
+	req.Header.Set("Authorization", "Bearer "+GetEnv("GITHUB_ACCESS_TOKEN"))
 	if err != nil {
 		return nil, err
 	}
