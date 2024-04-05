@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -25,7 +25,7 @@ func GetTopLanguages() http.HandlerFunc {
 
 		urlObj, err := url.Parse(r.RequestURI)
 		if err != nil {
-			fmt.Println(err)
+			log.Printf("error: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal Server Error"))
 			return
@@ -33,7 +33,7 @@ func GetTopLanguages() http.HandlerFunc {
 
 		query, err := url.ParseQuery(urlObj.RawQuery)
 		if err != nil {
-			fmt.Println(err)
+			log.Printf("error: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal Server Error"))
 			return
@@ -48,7 +48,7 @@ func GetTopLanguages() http.HandlerFunc {
 
 		repos, err := utils.FetchGithubRepositories(username)
 		if err != nil {
-			fmt.Println(err)
+			log.Printf("error: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal Server Error"))
 			return

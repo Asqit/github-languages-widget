@@ -1,6 +1,10 @@
 package handlers
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/asqit/github-language-widget/middlewares"
+)
 
 func router(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/health", HealthCheckHandler())
@@ -13,7 +17,6 @@ func NewServer() http.Handler {
 	router(mux)
 
 	var handler http.Handler = mux
-	// bind middlewares here
-	// logger(mux), cors(mux)... etc
+	handler = middlewares.Logger(handler)
 	return handler
 }
