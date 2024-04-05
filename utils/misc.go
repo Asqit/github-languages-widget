@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -37,6 +38,7 @@ func FetchGithubRepositories(username string) ([]models.Repository, error) {
 	jsonError := json.Unmarshal(body, &repositories)
 
 	if jsonError != nil {
+		log.Println(body)
 		return nil, jsonError
 	}
 
