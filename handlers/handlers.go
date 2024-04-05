@@ -40,6 +40,7 @@ func GetTopLanguages() http.HandlerFunc {
 		}
 
 		username := query.Get("username")
+		isDark := query.Get("dark")
 		if username == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Bad Request"))
@@ -61,7 +62,7 @@ func GetTopLanguages() http.HandlerFunc {
 			progresses[name] = utils.ProgressBar(count, len(repos))
 		}
 
-		svg := utils.EditLanguagesSVG(progresses)
+		svg := utils.EditLanguagesSVG(progresses, isDark == "true")
 
 		w.Header().Set("Content-Type", "image/svg+xml")
 		w.Write(svg)

@@ -98,7 +98,7 @@ func GenerateTopLanguages(repos []models.Repository, username string) map[string
 	return languages
 }
 
-func EditLanguagesSVG(languages map[string]string) []byte {
+func EditLanguagesSVG(languages map[string]string, isDark bool) []byte {
 	svg := `<svg width="400" xmlns="http://www.w3.org/2000/svg">`
 
 	svg += `
@@ -112,10 +112,20 @@ func EditLanguagesSVG(languages map[string]string) []byte {
             font-size: 24px;
             font-weight: bold;
         }
+
+		text .title {
+			fill: %s;
+		}
     </style>
 	<text x="50" y="30" class="title">Top Languages</text>
-
 	`
+
+	svg = fmt.Sprintf(svg, func() string {
+		if isDark {
+			return "white"
+		}
+		return "black"
+	})
 
 	multiplier := 1
 	for text, bar := range languages {
