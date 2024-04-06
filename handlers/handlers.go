@@ -58,8 +58,8 @@ func GetTopLanguages() http.HandlerFunc {
 		languages := utils.GenerateTopLanguages(repos, username)
 		progresses := make(map[string]string)
 
-		for name, count := range languages {
-			progresses[name] = utils.ProgressBar(count, len(repos))
+		for _, count := range languages {
+			progresses[count.Key] = utils.ProgressBar(count.Value, len(repos))
 		}
 
 		svg := utils.EditLanguagesSVG(progresses, isDark == "true")

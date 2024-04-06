@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/asqit/github-language-widget/models"
@@ -47,8 +47,6 @@ func FetchGithubRepositories(username string) ([]models.Repository, error) {
 	repositories := []models.Repository{}
 	jsonError := json.Unmarshal(body, &repositories)
 
-	log.Println(string(body))
-
 	if jsonError != nil {
 		return nil, jsonError
 	}
@@ -75,7 +73,26 @@ func ProgressBar(progress int, total int) string {
 	return progressBar
 }
 
-func GenerateTopLanguages(repos []models.Repository, username string) map[string]int {
+type Pair struct {
+	Key   string
+	Value int
+}
+
+func sortMapByValue(m map[string]int) []Pair {
+	// Create a slice of pairs to hold the key-value pairs
+	var pairs []Pair
+	// Populate the slice with the key-value pairs from the map
+	for k, v := range m {
+		pairs = append(pairs, Pair{k, v})
+	}
+	// Sort the slice by values
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].Value > pairs[j].Value // Change to '<' for ascending order
+	})
+	return pairs
+}
+
+func GenerateTopLanguages(repos []models.Repository, username string) []Pair {
 	languages := make(map[string]int)
 
 	for _, repo := range repos {
@@ -95,47 +112,48 @@ func GenerateTopLanguages(repos []models.Repository, username string) map[string
 		}
 	}
 
-	return languages
+	return sortMapByValue(languages)
 }
 
 func EditLanguagesSVG(languages map[string]string, isDark bool) []byte {
-	svg := `<svg width="400" xmlns="http://www.w3.org/2000/svg">`
+	svg := `<svg width="400" height="%d" xmlns="http://www.w3.org/2000/svg">`
 
 	svg += `
 	<style>
         text {
             font-family: 'Courier New', Courier, monospace;
             font-size: 16px;
+            fill: black; /* Set default text color */
         }
 		.title {
             font-family: Arial;
             font-size: 24px;
             font-weight: bold;
+            fill: black; /* Set default text color for title */
         }
 
-		text .title {
-			fill: %s;
-		}
+		.lightMode { fill: white; } /* Set text color for light mode */
+		.darkMode { fill: black; } /* Set text color for dark mode */
     </style>
 	<text x="50" y="30" class="title">Top Languages</text>
 	`
 
-	svg = fmt.Sprintf(svg, func() string {
-		if isDark {
-			return "white"
-		}
-		return "black"
-	})
+	svg = fmt.Sprintf(svg, len(languages)*32+64)
+
+	// Determine the color class based on isDark
+	colorClass := "lightMode"
+	if isDark {
+		colorClass = "darkMode"
+	}
 
 	multiplier := 1
 	for text, bar := range languages {
 		multiplier += 1
 		svg += fmt.Sprintf(`
-
-		<text x="20" y="%d" font-family="Arial" font-size="16" fill="black">
+		<text x="20" y="%d" font-family="Arial" font-size="16" class="%s">
 			<tspan>%s</tspan>: <tspan>%s</tspan>
 		</text>
-		`, multiplier*32, text, bar) + "\n" // Add a new line character after each text element
+		`, multiplier*32, colorClass, text, bar) + "\n" // Add a new line character after each text element
 	}
 
 	svg += `</svg>`
