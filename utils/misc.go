@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"sort"
 	"time"
 
 	"github.com/asqit/github-language-widget/models"
@@ -73,26 +72,7 @@ func ProgressBar(progress int, total int) string {
 	return progressBar
 }
 
-type Pair struct {
-	Key   string
-	Value int
-}
-
-func sortMapByValue(m map[string]int) []Pair {
-	// Create a slice of pairs to hold the key-value pairs
-	var pairs []Pair
-	// Populate the slice with the key-value pairs from the map
-	for k, v := range m {
-		pairs = append(pairs, Pair{k, v})
-	}
-	// Sort the slice by values
-	sort.Slice(pairs, func(i, j int) bool {
-		return pairs[i].Value > pairs[j].Value // Change to '<' for ascending order
-	})
-	return pairs
-}
-
-func GenerateTopLanguages(repos []models.Repository, username string) []Pair {
+func GenerateTopLanguages(repos []models.Repository, username string) map[string]int {
 	languages := make(map[string]int)
 
 	for _, repo := range repos {
@@ -101,23 +81,24 @@ func GenerateTopLanguages(repos []models.Repository, username string) []Pair {
 		}
 
 		language := repo.Language
-		if language == "" {
-			continue
-		}
 
-		if _, ok := languages[language]; ok {
-			languages[language] += 1
-		} else {
-			languages[language] = 1
+		if language != "" {
+			languages[language]++
 		}
 	}
 
-	return sortMapByValue(languages)
+	return languages
 }
 
-func EditLanguagesSVG(languages map[string]string, isDark bool) []byte {
-	svg := `<svg width="400" height="%d" xmlns="http://www.w3.org/2000/svg">`
+func EditLanguagesSVG(languages PairList, isDark bool) []byte {
 
+	// Determine the color class based on isDark
+	colorClass := "lightMode"
+	if isDark {
+		colorClass = "darkMode"
+	}
+
+	svg := `<svg width="400" height="%d" xmlns="http://www.w3.org/2000/svg">`
 	svg += `
 	<style>
         text {
@@ -135,25 +116,18 @@ func EditLanguagesSVG(languages map[string]string, isDark bool) []byte {
 		.lightMode { fill: white; } /* Set text color for light mode */
 		.darkMode { fill: black; } /* Set text color for dark mode */
     </style>
-	<text x="50" y="30" class="title">Top Languages</text>
+	<text x="50" y="30" class="title %s">Top Languages</text>
 	`
 
-	svg = fmt.Sprintf(svg, len(languages)*32+64)
-
-	// Determine the color class based on isDark
-	colorClass := "lightMode"
-	if isDark {
-		colorClass = "darkMode"
-	}
-
+	svg = fmt.Sprintf(svg, len(languages)*32+64, colorClass)
 	multiplier := 1
-	for text, bar := range languages {
+	for _, pair := range languages {
 		multiplier += 1
 		svg += fmt.Sprintf(`
 		<text x="20" y="%d" font-family="Arial" font-size="16" class="%s">
 			<tspan>%s</tspan>: <tspan>%s</tspan>
 		</text>
-		`, multiplier*32, colorClass, text, bar) + "\n" // Add a new line character after each text element
+		`, multiplier*32, colorClass, pair.Key, pair.Value) + "\n" // Add a new line character after each text element
 	}
 
 	svg += `</svg>`
