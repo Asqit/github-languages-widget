@@ -24,7 +24,12 @@ func FetchGithubRepositories(username string) ([]models.Repository, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	req, err := http.NewRequest("GET", fetchUrl, nil)
-	req.Header.Set("Authorization", "Bearer "+GetEnv("GITHUB_ACCESS_TOKEN"))
+
+	authToken := GetEnv("GITHUB_ACCESS_TOKEN")
+	if authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+authToken)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -32,6 +37,10 @@ func FetchGithubRepositories(username string) ([]models.Repository, error) {
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("failed to fetch repositories. Status code: %d", res.StatusCode)
 	}
 
 	if res.Body != nil {
@@ -131,7 +140,7 @@ func EditLanguagesSVG(languages PairList, isDark bool) []byte {
 			<tspan>%s</tspan>
 		</text>
 		
-		`, multiplier*34, colorClass, pair.Key, (multiplier * 34 + 16), colorClass ,pair.Value) 
+		`, multiplier*34, colorClass, pair.Key, (multiplier*34 + 16), colorClass, pair.Value)
 	}
 
 	svg += `</svg>`
