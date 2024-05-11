@@ -116,18 +116,22 @@ func EditLanguagesSVG(languages PairList, isDark bool) []byte {
 		.lightMode { fill: white; } /* Set text color for light mode */
 		.darkMode { fill: black; } /* Set text color for dark mode */
     </style>
-	<text x="50" y="30" class="title %s">Top Languages</text>
+	<text x="0" y="30" class="title %s">Top Languages</text>
 	`
 
-	svg = fmt.Sprintf(svg, len(languages)*32+64, colorClass)
+	svg = fmt.Sprintf(svg, len(languages)*34+64, colorClass)
 	multiplier := 1
 	for _, pair := range languages {
 		multiplier += 1
-		svg += fmt.Sprintf(`
-		<text x="20" y="%d" font-family="Arial" font-size="16" class="%s">
-			<tspan>%s</tspan>: <tspan>%s</tspan>
+		svg += fmt.Sprintf(` 
+		<text x="0" y="%d" font-family="Arial" font-size="16" class="%s">
+			<tspan>%s</tspan>
 		</text>
-		`, multiplier*32, colorClass, pair.Key, pair.Value) + "\n" // Add a new line character after each text element
+		<text x="0" y="%d" font-family="Arial" font-size="16" class="%s">
+			<tspan>%s</tspan>
+		</text>
+		
+		`, multiplier*34, colorClass, pair.Key, (multiplier * 34 + 16), colorClass ,pair.Value) 
 	}
 
 	svg += `</svg>`
