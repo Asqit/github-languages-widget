@@ -24,10 +24,19 @@ export function countLanguages(
 }
 
 export async function createConfig() {
-  const env = await load();
+  let port = Deno.env.get("PORT");
+  let githubAccessToken = Deno.env.get("GITHUB_ACCESS_TOKEN");
+
+  if (!port || !githubAccessToken) {
+    const env = await load();
+
+    port = env["PORT"];
+    githubAccessToken = env["GITHUB_ACCESS_TOKEN"];
+  }
+
   return {
-    port: env["PORT"],
-    githubAccessToken: env["GITHUB_ACCESS_TOKEN"],
+    port,
+    githubAccessToken,
   };
 }
 
