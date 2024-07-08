@@ -1,8 +1,12 @@
-import { Repository } from "./types.ts";
-import { countLanguages, createConfig, createSvg } from "./utils.ts";
+import {
+  countLanguages,
+  createConfig,
+  createSvg,
+  fetchRepositories,
+} from "./src/utils.ts";
 
 async function getTopLanguages(req: Request): Promise<Response> {
-  const { githubAccessToken, port } = await createConfig();
+  const { githubAccessToken } = await createConfig();
   if (req.method !== "GET") {
     console.log("Method not allowed:", req.method);
     return new Response("Method Not Allowed", { status: 405 });
@@ -24,23 +28,14 @@ async function getTopLanguages(req: Request): Promise<Response> {
     return new Response("Internal Server Error", { status: 500 });
   }
 
-  const response = await fetch(
-    `https://api.github.com/users/${username}/repos`,
-    {
-      headers: {
-        Authorization: `Bearer ${githubAccessToken}`,
-      },
-    }
-  );
+  const response = await fetchRepositories(username, githubAccessToken);
 
-  if (response.status !== 200) {
-    console.log(`GitHub API responded with status: ${response.status}`);
-    return new Response("Not Found", { status: 404 });
+  if (response instanceof Response) {
+    return response;
   }
 
-  const repos: Repository[] = await response.json();
-  const languages = countLanguages(repos, username);
-  const svg = createSvg(languages, repos.length, isDark === "true");
+  const languages = countLanguages(response, username);
+  const svg = createSvg(languages, response.length, isDark === "true");
 
   return new Response(svg, {
     headers: {

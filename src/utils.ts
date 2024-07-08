@@ -1,4 +1,4 @@
-import type { Repository } from "./types.ts";
+import type { Repository } from "../src/types.ts";
 import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
 
 export const ASCII_PROGRESS = "▒";
@@ -84,4 +84,27 @@ export function createSvg(
   `;
 
   return svgTemplate;
+}
+
+export async function fetchRepositories(username: string, token: string) {
+  try {
+    const response = await fetch(
+      `https://api.github.com/users/${username}/repos`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (Array.isArray(data) && data.length === 0) {
+      return new Response("No Content", { status: 204 });
+    }
+
+    return data as Repository[];
+  } catch (exception) {
+    return new Response(JSON.stringify(exception), { status: 500 });
+  }
 }
