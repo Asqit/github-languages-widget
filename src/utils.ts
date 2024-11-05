@@ -4,10 +4,7 @@ import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
 export const ASCII_PROGRESS = "▒";
 export const ASCII_FINISH = "█";
 
-export function countLanguages(
-  repos: Repository[],
-  username: string
-): Map<string, number> {
+export function countLanguages(repos: Repository[], username: string) {
   const languages = new Map<string, number>();
   const upperCaseUsername = username.toUpperCase();
 
@@ -42,8 +39,9 @@ export async function createConfig() {
 
 function createProgressBar(progress: number, total: number): [string, number] {
   const percentage = (progress * 100) / total;
-  const progressBar = Array.from({ length: 50 }, (_, i) =>
-    i < percentage / 2 ? ASCII_FINISH : ASCII_PROGRESS
+  const completedSteps = Math.round((progress / total) * total);
+  const progressBar = Array.from({ length: total }, (_, i) =>
+    i < completedSteps ? ASCII_FINISH : ASCII_PROGRESS
   ).join("");
 
   return [progressBar, percentage];
@@ -59,35 +57,38 @@ export function createSvg(
 
   const languageBars = Array.from(languages)
     .map(([lang, count], i) => {
-      const [bar, _percentage] = createProgressBar(count, total);
+      const [bar, percentage] = createProgressBar(count, total);
       const yPos = (i + 2) * 34;
 
       return `
       <text x="10" y="${yPos}" class="${className}">${lang}</text>
       <text x="10" y="${yPos + 16}" class="${className}">${bar}</text>
+      <text x="${10 + bar.length * 10}" y="${
+        yPos + 16
+      }" class="${className}">${percentage}%</text>
     `;
     })
     .join("");
 
   const svgTemplate = `
-    <svg width="400" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">
+    <svg width="500" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">
       <style>
         text {
-          font-family: 'Courier New', Courier, monospace;
+          font-family: monospace;
           font-weight: 400;
           font-style: normal;
           font-size: 16px;
-          fill: ${isDark ? "white" : "black"};
+          fill: ${isDark ? "black" : "white"};
         }
         .title {
-          font-family: Arial;
+          font-family: monospace;
           font-style: normal;
           font-size: 24px;
           font-weight: bold;
-          fill: ${isDark ? "white" : "black"};
+          fill: ${isDark ? "black" : "white"};
         }
       </style>
-      <text x="10" y="30" class="title ${className}">Top Languages</text>
+      <text x="10" y="30" class="title ${className}">Top-languages</text>
       ${languageBars}
     </svg>
   `;
@@ -98,12 +99,7 @@ export function createSvg(
 export async function fetchRepositories(username: string, token: string) {
   try {
     const response = await fetch(
-      `https://api.github.com/users/${username}/repos`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      `https://api.github.com/users/${username}/repos`
     );
 
     const data = await response.json();

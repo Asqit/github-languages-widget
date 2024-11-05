@@ -1,53 +1,56 @@
-import {
-  countLanguages,
-  createConfig,
-  createSvg,
-  fetchRepositories,
-} from "./src/utils.ts";
+// @deno-types="npm:@types/express@^4.17"
+import express from "npm:express";
 
-async function getTopLanguages(req: Request): Promise<Response> {
-  const { githubAccessToken } = await createConfig();
-  if (req.method !== "GET") {
-    console.log("Method not allowed:", req.method);
-    return new Response("Method Not Allowed", { status: 405 });
-  }
+import { createConfig } from "./src/utils.ts";
+import { fetchRepositories } from "./src/utils.ts";
+import { countLanguages } from "./src/utils.ts";
+import { createSvg } from "./src/utils.ts";
 
-  const parsedUrl = new URL(req.url, "http://localhost");
-  const isDark = parsedUrl.searchParams.get("dark");
-  const username = parsedUrl.searchParams.get("username");
-
-  if (!username || username === null) {
-    console.log("Username is missing");
-    return new Response("Bad Request", { status: 400 });
-  }
-
-  console.log(`Fetching repos for user: ${username}`);
-
-  if (!githubAccessToken) {
-    console.log("GitHub access token is missing");
-    return new Response("Internal Server Error", { status: 500 });
-  }
-
-  const response = await fetchRepositories(username, githubAccessToken);
-
-  if (response instanceof Response) {
-    return response;
-  }
-
-  const languages = countLanguages(response, username);
-  const svg = createSvg(languages, response.length, isDark === "true");
-
-  return new Response(svg, {
-    headers: {
-      "Content-Type": "image/svg+xml",
-    },
-  });
+const { githubAccessToken } = await createConfig();
+const app = express();
+if (!githubAccessToken) {
+  Deno.exit(1);
 }
 
-async function router(req: Request) {
-  console.log(`Method - [${req.method.toUpperCase()}], Url - [${req.url}]`);
-
-  return await getTopLanguages(req);
+function isValidQueryParams(username: unknown, isDark: unknown): boolean {
+  return (
+    typeof username === "string" && (isDark === "true" || isDark === "false")
+  );
 }
 
-Deno.serve({ port: 3000 }, router);
+app.get("/", async (req, res) => {
+  const { isDark, username } = req.query;
+  if (!isValidQueryParams(username, isDark)) {
+    res.status(400).json({
+      status: "bad request",
+      detail: "Invalid or missing query parameters",
+    });
+    return;
+  }
+
+  const repositories = await fetchRepositories(
+    String(username),
+    githubAccessToken
+  );
+  if (repositories instanceof Response) {
+    res.sendStatus(400);
+    return;
+  }
+
+  const filtered = () => {
+    const valid = repositories.filter((repo) => {
+      if (repo.language) return repo;
+    });
+    return valid;
+  };
+
+  const languages = countLanguages(filtered(), String(username));
+  const svg = createSvg(languages, filtered().length, Boolean(isDark));
+
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.status(201).send(svg);
+});
+
+app.listen(8000, () => {
+  console.log(`http://localhost:8000`);
+});
