@@ -37,7 +37,10 @@ export async function createConfig() {
   };
 }
 
-function createProgressBar(progress: number, total: number): [string, number] {
+export function createProgressBar(
+  progress: number,
+  total: number
+): [string, number] {
   const percentage = (progress * 100) / total;
   const completedSteps = Math.round((progress / total) * total);
   const progressBar = Array.from({ length: total }, (_, i) =>
@@ -50,9 +53,10 @@ function createProgressBar(progress: number, total: number): [string, number] {
 export function createSvg(
   languages: Map<string, number>,
   total: number,
-  isDark = false
+  isDark: boolean
 ): string {
   const className = isDark ? "dark" : "light";
+
   const svgHeight = (languages.size + 2) * 34;
 
   const languageBars = Array.from(languages)
@@ -78,14 +82,17 @@ export function createSvg(
           font-weight: 400;
           font-style: normal;
           font-size: 16px;
-          fill: ${isDark ? "black" : "white"};
+          fill: white;
         }
         .title {
           font-family: monospace;
           font-style: normal;
           font-size: 24px;
           font-weight: bold;
-          fill: ${isDark ? "black" : "white"};
+          fill: "white";
+        }
+        .dark {
+          fill: black;
         }
       </style>
       <text x="10" y="30" class="title ${className}">Top-languages</text>
@@ -99,7 +106,13 @@ export function createSvg(
 export async function fetchRepositories(username: string, token: string) {
   try {
     const response = await fetch(
-      `https://api.github.com/users/${username}/repos`
+      `https://api.github.com/users/${username}/repos`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
 
     const data = await response.json();
