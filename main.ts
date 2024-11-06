@@ -72,7 +72,7 @@ app.get("/", async (req, res) => {
     isDark === "true" ? true : false
   );
   res.setHeader("Content-Type", "image/svg+xml");
-  res.status(201).send(svg);
+  res.status(200).send(svg);
 });
 
 app.use((err, _req, res, _next) => {
