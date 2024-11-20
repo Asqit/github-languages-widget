@@ -29,15 +29,13 @@ app.use((req, res, next) => {
   next();
 });
 
-function isValidQueryParams(username: unknown, isDark: unknown): boolean {
-  return (
-    typeof username === "string" && (isDark === "true" || isDark === "false")
-  );
+function isValidQueryParams(username: unknown): boolean {
+  return typeof username === "string";
 }
 
 app.get("/", async (req, res) => {
-  const { isDark, username } = req.query;
-  if (!isValidQueryParams(username, isDark)) {
+  const { color, username } = req.query;
+  if (!isValidQueryParams(username)) {
     res.status(400).json({
       status: "bad request",
       detail: "Invalid or missing query parameters",
@@ -66,11 +64,7 @@ app.get("/", async (req, res) => {
   };
 
   const languages = countLanguages(filtered(), String(username));
-  const svg = createSvg(
-    languages,
-    filtered().length,
-    isDark === "true" ? true : false
-  );
+  const svg = createSvg(languages, filtered().length, color && `#${color}`);
   res.setHeader("Content-Type", "image/svg+xml");
   res.status(200).send(svg);
 });

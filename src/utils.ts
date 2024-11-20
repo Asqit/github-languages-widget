@@ -53,10 +53,8 @@ export function createProgressBar(
 export function createSvg(
   languages: Map<string, number>,
   total: number,
-  isDark: boolean
+  color: string = "#000000"
 ): string {
-  const className = isDark ? "dark" : "light";
-
   const svgHeight = (languages.size + 2) * 34;
 
   const languageBars = Array.from(languages)
@@ -65,11 +63,11 @@ export function createSvg(
       const yPos = (i + 2) * 34;
 
       return `
-      <text x="10" y="${yPos}" class="${className}">${lang}</text>
-      <text x="10" y="${yPos + 16}" class="${className}">${bar}</text>
-      <text x="${10 + bar.length * 10}" y="${
-        yPos + 16
-      }" class="${className}">${percentage}%</text>
+      <text x="10" y="${yPos}">${lang}</text>
+      <text x="10" y="${yPos + 16}">${bar}</text>
+      <text x="${10 + bar.length * 10}" y="${yPos + 16}">${percentage.toFixed(
+        2
+      )}%</text>
     `;
     })
     .join("");
@@ -82,20 +80,17 @@ export function createSvg(
           font-weight: 400;
           font-style: normal;
           font-size: 16px;
-          fill: white;
+          fill: ${color};
         }
         .title {
           font-family: monospace;
           font-style: normal;
           font-size: 24px;
           font-weight: bold;
-          fill: "white";
-        }
-        .dark {
-          fill: black;
+          fill: ${color}
         }
       </style>
-      <text x="10" y="30" class="title ${className}">Top-languages</text>
+      <text x="10" y="30" class="title">Top-languages</text>
       ${languageBars}
     </svg>
   `;
