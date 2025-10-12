@@ -1,79 +1,98 @@
 import type { Repository } from "../src/types.ts";
-import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
+import { Octokit } from "octokit";
+import { load } from "@std/dotenv";
 
 export const ASCII_PROGRESS = "▒";
 export const ASCII_FINISH = "█";
 
-export function countLanguages(repos: Repository[], username: string) {
+export async function createConfig() {
+  let githubAccessToken = Deno.env.get("GITHUB_ACCESS_TOKEN");
+
+  if (!githubAccessToken) {
+    const env = await load();
+
+    githubAccessToken = env["GITHUB_ACCESS_TOKEN"];
+  }
+
+  return {
+    githubAccessToken,
+  };
+}
+
+export function countLanguagesWithPercent(
+  repos: (Repository & { languages: Record<string, number> })[],
+  username: string,
+) {
   const languages = new Map<string, number>();
   const upperCaseUsername = username.toUpperCase();
 
   repos.forEach((repo) => {
     if (repo.owner.login.toUpperCase() !== upperCaseUsername) return;
 
-    const language = repo.language;
-    if (language) {
-      languages.set(language, (languages.get(language) || 0) + 1);
+    for (const [lang, pct] of Object.entries(repo.languages)) {
+      languages.set(lang, (languages.get(lang) || 0) + pct);
     }
   });
 
   return new Map([...languages.entries()].sort((a, b) => b[1] - a[1]));
 }
 
-export async function createConfig() {
-  let port = Deno.env.get("PORT");
-  let githubAccessToken = Deno.env.get("GITHUB_ACCESS_TOKEN");
-
-  if (!port || !githubAccessToken) {
-    const env = await load();
-
-    port = env["PORT"];
-    githubAccessToken = env["GITHUB_ACCESS_TOKEN"];
+export function createProgressBar(
+  count: number,
+  total: number,
+  barLength = 40,
+): [string, number] {
+  if (!total || total <= 0) {
+    const empty = ASCII_PROGRESS.repeat(barLength);
+    return [empty, 0];
   }
 
-  return {
-    port,
-    githubAccessToken,
-  };
-}
+  // whole-number percentage (rounded)
+  const percentage = Math.round((count * 100) / total);
 
-export function createProgressBar(
-  progress: number,
-  total: number
-): [string, number] {
-  const percentage = (progress * 100) / total;
-  const completedSteps = Math.round((progress / total) * total);
-  const progressBar = Array.from({ length: total }, (_, i) =>
-    i < completedSteps ? ASCII_FINISH : ASCII_PROGRESS
-  ).join("");
+  // filled chars based on that whole-number percentage
+  const filledChars = Math.round((percentage * barLength) / 100);
+  const filledPart = ASCII_FINISH.repeat(Math.max(0, filledChars));
+  const emptyPart = ASCII_PROGRESS.repeat(Math.max(0, barLength - filledChars));
 
-  return [progressBar, percentage];
+  return [filledPart + emptyPart, percentage];
 }
 
 export function createSvg(
   languages: Map<string, number>,
-  total: number,
-  color: string = "#000000"
+  color: string = "#000000",
+  barLength = 40,
+  backgroundColor: string = "transparent",
+  borderRadius: number = 0, // NEW
 ): string {
-  const svgHeight = (languages.size + 2) * 34;
+  const total = Array.from(languages.values()).reduce((a, b) => a + b, 0);
+  const charWidth = 10;
+  const leftX = 10;
+  const lineHeight = 34;
+  const titleHeight = 30;
+  const svgHeight = (languages.size + 2) * lineHeight;
+  const svgWidth = Math.max(500, leftX + barLength * charWidth + 160);
 
   const languageBars = Array.from(languages)
+    .slice(0, 6)
     .map(([lang, count], i) => {
-      const [bar, percentage] = createProgressBar(count, total);
-      const yPos = (i + 2) * 34;
+      const [bar, percentage] = createProgressBar(count, total, barLength);
+      const yPos = (i + 2) * lineHeight;
+      const nameText = `${lang} ${percentage}%`;
+      const barX = leftX;
+      const barY = yPos + 16;
+      const percentRightX = leftX + barLength * charWidth + 8;
 
       return `
-      <text x="10" y="${yPos}">${lang}</text>
-      <text x="10" y="${yPos + 16}">${bar}</text>
-      <text x="${10 + bar.length * 10}" y="${yPos + 16}">${percentage.toFixed(
-        2
-      )}%</text>
-    `;
+        <text x="${leftX}" y="${yPos}">${nameText}</text>
+        <text x="${barX}" y="${barY}">${bar}</text>
+        <text x="${percentRightX}" y="${barY}">${percentage}%</text>
+      `;
     })
     .join("");
 
-  const svgTemplate = `
-    <svg width="500" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">
+  return `
+    <svg width="${svgWidth}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">
       <style>
         text {
           font-family: monospace;
@@ -87,37 +106,69 @@ export function createSvg(
           font-style: normal;
           font-size: 24px;
           font-weight: bold;
-          fill: ${color}
+          fill: ${color};
         }
       </style>
-      <text x="10" y="30" class="title">Top-languages</text>
+
+      <!-- Background -->
+      <rect
+        x="0"
+        y="0"
+        width="${svgWidth}"
+        height="${svgHeight}"
+        rx="${borderRadius}"
+        ry="${borderRadius}"
+        fill="${backgroundColor}"
+      />
+
+      <text x="${leftX}" y="${titleHeight}" class="title">Top Languages</text>
       ${languageBars}
     </svg>
   `;
-
-  return svgTemplate;
 }
 
-export async function fetchRepositories(username: string, token: string) {
+export async function fetchRepositoriesWithLanguages(
+  username: string,
+  token?: string,
+) {
   try {
-    const response = await fetch(
-      `https://api.github.com/users/${username}/repos`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    const octokit = token ? new Octokit({ auth: token }) : new Octokit();
+
+    const { data: repos } = await octokit.rest.repos.listForUser({
+      username,
+      per_page: 100,
+    });
+
+    if (repos.length === 0) return [];
+
+    const reposWithLanguages = await Promise.all(
+      repos.map(async (repo) => {
+        const { data: langData } = await octokit.rest.repos.listLanguages({
+          owner: repo.owner.login,
+          repo: repo.name,
+        });
+
+        const totalBytes = Object.values(langData).reduce(
+          (sum, b) => sum + b,
+          0,
+        );
+
+        const languagePercentages = Object.fromEntries(
+          Object.entries(langData).map(([lang, bytes]) => [
+            lang,
+            totalBytes ? (bytes / totalBytes) * 100 : 0,
+          ]),
+        );
+
+        return { ...repo, languages: languagePercentages };
+      }),
     );
 
-    const data = await response.json();
-
-    if (Array.isArray(data) && data.length === 0) {
-      return new Response("No Content", { status: 204 });
-    }
-
-    return data as Repository[];
-  } catch (exception) {
-    return new Response(JSON.stringify(exception), { status: 500 });
+    return reposWithLanguages as (Repository & {
+      languages: Record<string, number>;
+    })[];
+  } catch (err) {
+    console.error(err);
+    return [];
   }
 }
