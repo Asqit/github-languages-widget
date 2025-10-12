@@ -43,7 +43,7 @@ app.get(
       }
 
       const topLanguages = countLanguagesWithPercent(repos, username);
-      const svg = createSvg(topLanguages, color || "#000000");
+      const svg = createSvg(topLanguages, color ? `#${color}` : "#000000");
 
       return new Response(svg, {
         headers: { "Content-Type": "image/svg+xml" },

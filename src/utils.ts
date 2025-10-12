@@ -63,7 +63,7 @@ export function createSvg(
   color: string = "#000000",
   barLength = 40,
   backgroundColor: string = "transparent",
-  borderRadius: number = 0, // NEW
+  borderRadius: number = 0,
 ): string {
   const total = Array.from(languages.values()).reduce((a, b) => a + b, 0);
   const charWidth = 10;
