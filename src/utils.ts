@@ -65,16 +65,20 @@ export function createSvg(
   backgroundColor: string = "transparent",
   borderRadius: number = 0,
 ): string {
+  const sorted = Array.from(languages.entries()).sort((a, b) => b[1] - a[1]);
+  const topFive = sorted.slice(0, 5);
+  const others = sorted.slice(5);
+  const othersTotal = others.reduce((acc, [, count]) => acc + count, 0);
+  if (othersTotal > 0) topFive.push(["Others", othersTotal]);
+
   const total = Array.from(languages.values()).reduce((a, b) => a + b, 0);
   const charWidth = 10;
   const leftX = 10;
   const lineHeight = 34;
   const titleHeight = 30;
-  const svgHeight = (languages.size + 2) * lineHeight;
+  const svgHeight = (topFive.length + 2) * lineHeight;
   const svgWidth = Math.max(500, leftX + barLength * charWidth + 160);
-
-  const languageBars = Array.from(languages)
-    .slice(0, 6)
+  const languageBars = topFive
     .map(([lang, count], i) => {
       const [bar, percentage] = createProgressBar(count, total, barLength);
       const yPos = (i + 2) * lineHeight;
@@ -91,6 +95,7 @@ export function createSvg(
     })
     .join("");
 
+  // SVG output
   return `
     <svg width="${svgWidth}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">
       <style>
